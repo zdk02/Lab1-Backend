@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using StudentApi.Data;
 using StudentApi.Models;
 using System.Globalization;
-
+using StudentApi.Services;
 
 namespace StudentApi.Controllers
 {
@@ -10,17 +9,22 @@ namespace StudentApi.Controllers
     [Route("api/[controller]")]
     public class StudentsController : ControllerBase
     {
+        private readonly IStudentService _studentService;
+
+        public StudentsController(IStudentService studentService)
+        {
+            _studentService = studentService;
+        }
+
         [HttpGet]
         public IActionResult GetAllStudents()
         {
             try
             {
-                var students = StudentRepository.Students;
-                
+                var students = _studentService.GetAll();
+
                 if (students == null || !students.Any())
-                {
                     return NotFound(new { message = "No students found." });
-                }
 
                 return Ok(students);
             }
@@ -33,15 +37,16 @@ namespace StudentApi.Controllers
                 });
             }
         }
-        
+
         [HttpGet("{id}")]
         public IActionResult GetStudentById(int id)
         {
             if (id <= 0)
                 return BadRequest(new { message = "ID must be a positive number." });
+
             try
             {
-                var student = StudentRepository.Students.FirstOrDefault(s => s.Id == id);
+                var student = _studentService.GetById(id);
                 if (student == null)
                     return NotFound(new { message = $"Student with ID {id} not found." });
 
@@ -61,52 +66,12 @@ namespace StudentApi.Controllers
 
             try
             {
-
-                var matchedStudents = StudentRepository.Students
-                    .Where(s => s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
-
+                var matchedStudents = _studentService.Search(name);
                 return Ok(matchedStudents);
             }
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
-            }
-        }
-
-        [HttpGet("date")]
-        public IActionResult GetFormattedDate()
-        {
-            string culture = "en-US";
-            string acceptLanguage = Request.Headers["Accept-Language"].ToString();
-
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(acceptLanguage))
-                {
-                    var languages = acceptLanguage.Split(',');
-                    var selectedCulture = languages[0].Trim();
-
-                    var validCultures = CultureInfo.GetCultures(CultureTypes.AllCultures)
-                        .Select(c => c.Name)
-                        .ToList();
-
-                    if (!validCultures.Contains(selectedCulture))
-                        throw new CultureNotFoundException($"Culture '{selectedCulture}' is not supported.");
-
-                    culture = selectedCulture;
-                }
-
-                var formattedDate = DateTime.Now.ToString(new CultureInfo(culture));
-                return Ok(new { date = formattedDate, culture });
-            }
-            catch (CultureNotFoundException ex)
-            {
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
 
@@ -116,21 +81,16 @@ namespace StudentApi.Controllers
             if (updatedStudent == null)
                 return BadRequest(new { message = "Update data is required." });
 
-            if (updatedStudent.Id <= 0 || string.IsNullOrWhiteSpace(updatedStudent.Name) ||
+            if (updatedStudent.Id <= 0 ||
+                string.IsNullOrWhiteSpace(updatedStudent.Name) ||
                 string.IsNullOrWhiteSpace(updatedStudent.Email))
                 return BadRequest(new { message = "Invalid input data." });
 
             try
             {
-
-                var student = StudentRepository.Students.FirstOrDefault(s => s.Id == updatedStudent.Id);
+                var student = _studentService.Update(updatedStudent);
                 if (student == null)
-                {
                     return NotFound(new { message = $"Student with ID {updatedStudent.Id} not found." });
-                }
-
-                student.Name = updatedStudent.Name;
-                student.Email = updatedStudent.Email;
 
                 return Ok(student);
             }
@@ -140,14 +100,32 @@ namespace StudentApi.Controllers
             }
         }
 
+        [HttpDelete("{id}")]
+        public IActionResult DeleteStudent(int id)
+        {
+            if (id <= 0)
+                return BadRequest(new { message = "ID must be a positive number." });
+
+            try
+            {
+                var result = _studentService.Delete(id);
+                if (!result)
+                    return NotFound(new { message = $"Student with ID {id} not found." });
+
+                return Ok(new { message = $"Student with ID {id} deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Deletion failed.", error = ex.Message });
+            }
+        }
+
         [HttpPost("upload-image")]
         public async Task<IActionResult> UploadImage([FromForm] IFormFile imageFile,
             [FromServices] IWebHostEnvironment env)
         {
             if (imageFile == null || imageFile.Length == 0)
-            {
                 return BadRequest("No file was uploaded.");
-            }
 
             var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
             var fileExtension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
@@ -166,9 +144,7 @@ namespace StudentApi.Controllers
             );
 
             if (!Directory.Exists(uploadsFolder))
-            {
                 Directory.CreateDirectory(uploadsFolder);
-            }
 
             var uniqueFileName = Guid.NewGuid().ToString() + fileExtension;
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
@@ -197,24 +173,37 @@ namespace StudentApi.Controllers
             }
         }
 
-        [HttpDelete("{id}")]
-        public IActionResult DeleteStudent(int id)
+        [HttpGet("date")]
+        public IActionResult GetFormattedDate()
         {
-            if (id <= 0)
-                return BadRequest(new { message = "ID must be a positive number." });
+            string culture = "en-US";
+            string acceptLanguage = Request.Headers["Accept-Language"].ToString();
 
             try
             {
+                if (!string.IsNullOrWhiteSpace(acceptLanguage))
+                {
+                    var selectedCulture = acceptLanguage.Split(',')[0].Trim();
+                    var validCultures = CultureInfo.GetCultures(CultureTypes.AllCultures)
+                        .Select(c => c.Name)
+                        .ToList();
 
-                var result = StudentRepository.DeleteStudent(id);
-                if (!result)
-                    return NotFound(new { message = $"Student with ID {id} not found." });
+                    if (!validCultures.Contains(selectedCulture))
+                        throw new CultureNotFoundException($"Culture '{selectedCulture}' is not supported.");
 
-                return Ok(new { message = $"Student with ID {id} deleted successfully." });
+                    culture = selectedCulture;
+                }
+
+                var formattedDate = DateTime.Now.ToString(new CultureInfo(culture));
+                return Ok(new { date = formattedDate, culture });
+            }
+            catch (CultureNotFoundException ex)
+            {
+                return BadRequest(new { message = ex.Message });
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Deletion failed.", error = ex.Message });
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
             }
         }
     }

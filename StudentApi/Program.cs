@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using StudentApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddScoped<IStudentService, StudentService>();
 
 builder.Services.AddControllers();
 
