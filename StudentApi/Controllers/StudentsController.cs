@@ -13,64 +13,131 @@ namespace StudentApi.Controllers
         [HttpGet]
         public IActionResult GetAllStudents()
         {
-            return Ok(StudentRepository.Students);
+            try
+            {
+                var students = StudentRepository.Students;
+                
+                if (students == null || !students.Any())
+                {
+                    return NotFound(new { message = "No students found." });
+                }
+
+                return Ok(students);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An unexpected error occurred while retrieving students.",
+                    error = ex.Message
+                });
+            }
         }
+        
         [HttpGet("{id}")]
         public IActionResult GetStudentById(int id)
         {
-            var student = StudentRepository.Students.FirstOrDefault(s => s.Id == id);
-            if (student == null)
-                return NotFound();
-            return Ok(student); 
+            if (id <= 0)
+                return BadRequest(new { message = "ID must be a positive number." });
+            try
+            {
+                var student = StudentRepository.Students.FirstOrDefault(s => s.Id == id);
+                if (student == null)
+                    return NotFound(new { message = $"Student with ID {id} not found." });
+
+                return Ok(student);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
         }
 
         [HttpGet("search")]
         public IActionResult SearchStudents([FromQuery] string name)
         {
             if (string.IsNullOrWhiteSpace(name))
-                return BadRequest("Name query parameter is required.");
-            var matchedStudents = StudentRepository.Students
-                .Where(s => s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
-                .ToList();
-            return Ok(matchedStudents);
+                return BadRequest(new { message = "Name query parameter is required." });
+
+            try
+            {
+
+                var matchedStudents = StudentRepository.Students
+                    .Where(s => s.Name.Contains(name, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+
+                return Ok(matchedStudents);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
         }
 
         [HttpGet("date")]
         public IActionResult GetFormattedDate()
         {
-            var acceptLanguage = Request.Headers["Accept-Language"].ToString();
-            var culture = "en-US";
-            if (!string.IsNullOrEmpty(acceptLanguage))
+            string culture = "en-US";
+            string acceptLanguage = Request.Headers["Accept-Language"].ToString();
+
+            try
             {
-                var languages = acceptLanguage.Split(',');
-                if (languages.Length > 0)
+                if (!string.IsNullOrWhiteSpace(acceptLanguage))
                 {
+                    var languages = acceptLanguage.Split(',');
                     var selectedCulture = languages[0].Trim();
 
-                    if (selectedCulture == "en-US" || selectedCulture == "es-ES" || selectedCulture == "fr-FR")
-                    {
-                        culture = selectedCulture;
-                    }
+                    var validCultures = CultureInfo.GetCultures(CultureTypes.AllCultures)
+                        .Select(c => c.Name)
+                        .ToList();
+
+                    if (!validCultures.Contains(selectedCulture))
+                        throw new CultureNotFoundException($"Culture '{selectedCulture}' is not supported.");
+
+                    culture = selectedCulture;
                 }
+
+                var formattedDate = DateTime.Now.ToString(new CultureInfo(culture));
+                return Ok(new { date = formattedDate, culture });
             }
-            var formattedDate = DateTime.Now.ToString(new CultureInfo(culture));
-            return Ok(new { date = formattedDate, culture });
+            catch (CultureNotFoundException ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An unexpected error occurred.", details = ex.Message });
+            }
         }
 
         [HttpPost("update")]
         public IActionResult UpdateStudent([FromBody] UpdateStudentDto updatedStudent)
         {
-            var student = StudentRepository.Students.FirstOrDefault(s => s.Id == updatedStudent.Id);
+            if (updatedStudent == null)
+                return BadRequest(new { message = "Update data is required." });
 
-            if (student == null)
+            if (updatedStudent.Id <= 0 || string.IsNullOrWhiteSpace(updatedStudent.Name) ||
+                string.IsNullOrWhiteSpace(updatedStudent.Email))
+                return BadRequest(new { message = "Invalid input data." });
+
+            try
             {
-                return NotFound(new { message = $"Student with ID {updatedStudent.Id} not found." });
+
+                var student = StudentRepository.Students.FirstOrDefault(s => s.Id == updatedStudent.Id);
+                if (student == null)
+                {
+                    return NotFound(new { message = $"Student with ID {updatedStudent.Id} not found." });
+                }
+
+                student.Name = updatedStudent.Name;
+                student.Email = updatedStudent.Email;
+
+                return Ok(student);
             }
-
-            student.Name = updatedStudent.Name;
-            student.Email = updatedStudent.Email;
-
-            return Ok(student);
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
+            }
         }
 
         [HttpPost("upload-image")]
@@ -81,33 +148,74 @@ namespace StudentApi.Controllers
             {
                 return BadRequest("No file was uploaded.");
             }
-            var uploadsFolder = Path.Combine(env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
-    
+
+            var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".gif" };
+            var fileExtension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
+
+            if (!allowedExtensions.Contains(fileExtension))
+            {
+                return BadRequest(new
+                {
+                    message = $"Invalid file type. Allowed types are: {string.Join(", ", allowedExtensions)}"
+                });
+            }
+
+            var uploadsFolder = Path.Combine(
+                env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
+                "uploads"
+            );
+
             if (!Directory.Exists(uploadsFolder))
             {
                 Directory.CreateDirectory(uploadsFolder);
             }
-            var uniqueFileName = Guid.NewGuid().ToString() + Path.GetExtension(imageFile.FileName);
+
+            var uniqueFileName = Guid.NewGuid().ToString() + fileExtension;
             var filePath = Path.Combine(uploadsFolder, uniqueFileName);
-    
-            using (var stream = new FileStream(filePath, FileMode.Create))
+
+            try
             {
-                await imageFile.CopyToAsync(stream);
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await imageFile.CopyToAsync(stream);
+                }
+
+                return Ok(new
+                {
+                    message = "File uploaded successfully.",
+                    fileName = uniqueFileName,
+                    url = $"/uploads/{uniqueFileName}"
+                });
             }
-
-            var relativePath = $"/uploads/{uniqueFileName}";
-
-            return Ok(new { message = "Image uploaded successfully!", path = relativePath });
+            catch (Exception ex)
+            {
+                return StatusCode(500, new
+                {
+                    message = "An error occurred while saving the file.",
+                    error = ex.Message
+                });
+            }
         }
-        
+
         [HttpDelete("{id}")]
         public IActionResult DeleteStudent(int id)
         {
-            var result = StudentRepository.DeleteStudent(id);
-            if (!result)
-                return NotFound(new { message = $"Student with ID {id} not found." });
+            if (id <= 0)
+                return BadRequest(new { message = "ID must be a positive number." });
 
-            return Ok(new { message = $"Student with ID {id} deleted successfully." });
+            try
+            {
+
+                var result = StudentRepository.DeleteStudent(id);
+                if (!result)
+                    return NotFound(new { message = $"Student with ID {id} not found." });
+
+                return Ok(new { message = $"Student with ID {id} deleted successfully." });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Deletion failed.", error = ex.Message });
+            }
         }
     }
 }

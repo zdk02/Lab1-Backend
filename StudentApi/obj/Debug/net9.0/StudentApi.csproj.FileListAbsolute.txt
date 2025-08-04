@@ -31,3 +31,4 @@ C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\StudentApi.
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\StudentApi.genruntimeconfig.cache
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\ref\StudentApi.dll
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\StudentApi.staticwebassets.runtime.json
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\StudentApi.sourcelink.json
