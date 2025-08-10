@@ -32,3 +32,10 @@ C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\StudentApi.
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\ref\StudentApi.dll
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\StudentApi.staticwebassets.runtime.json
 C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\obj\Debug\net9.0\StudentApi.sourcelink.json
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\MediatR.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\MediatR.Contracts.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\MediatR.Extensions.Microsoft.DependencyInjection.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\Microsoft.IdentityModel.Abstractions.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\Microsoft.IdentityModel.JsonWebTokens.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\Microsoft.IdentityModel.Logging.dll
+C:\Users\Zeinab\RiderProjects\StudentApi\StudentApi\bin\Debug\net9.0\Microsoft.IdentityModel.Tokens.dll
