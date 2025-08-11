@@ -3,11 +3,15 @@ using Microsoft.EntityFrameworkCore;
 using StudentApi.Services;
 using StudentApi.Filters;
 using StudentApi.Middlewares;
-using StudentApi.Data;
+using StudentApi.Data;     
+using StudentApi.DbFirst;   
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<StudentDbContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+builder.Services.AddDbContext<StudentDbFirstContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IStudentService, StudentService>();
