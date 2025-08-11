@@ -1,22 +1,27 @@
+using System.Threading;
+using System.Threading.Tasks;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using StudentApi.Data;
 using StudentApi.Models;
-using StudentApi.Services;
 
 namespace StudentApi.Features.Students.Queries
 {
-    public class GetStudentByIdQueryHandler : IRequestHandler<GetStudentByIdQuery, Student>
+    public class GetStudentByIdQueryHandler
+        : IRequestHandler<GetStudentByIdQuery, Student?>
     {
-        private readonly IStudentService _studentService;
+        private readonly StudentDbContext _db;
 
-        public GetStudentByIdQueryHandler(IStudentService studentService)
+        public GetStudentByIdQueryHandler(StudentDbContext db)
         {
-            _studentService = studentService;
+            _db = db;
         }
 
-        public Task<Student> Handle(GetStudentByIdQuery request, CancellationToken cancellationToken)
+        public async Task<Student?> Handle(GetStudentByIdQuery request, CancellationToken cancellationToken)
         {
-            var student = _studentService.GetById(request.Id);
-            return Task.FromResult(student);
+            return await _db.Students
+                .AsNoTracking()
+                .FirstOrDefaultAsync(s => s.Id == request.Id, cancellationToken);
         }
     }
 }

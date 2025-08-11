@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using StudentApi.Models;
 using System.Globalization;
-using StudentApi.Services;
 using MediatR;
+using StudentApi.Models;
 using StudentApi.Features.Students.Queries;
 using StudentApi.Features.Students.Commands;
 
@@ -12,13 +11,11 @@ namespace StudentApi.Controllers
     [Route("api/[controller]")]
     public class StudentsController : ControllerBase
     {
-        private readonly IStudentService _studentService;
         private readonly IMediator _mediator;
 
-        public StudentsController(IMediator mediator, IStudentService studentService)
+        public StudentsController(IMediator mediator)
         {
             _mediator = mediator;
-            _studentService = studentService;
         }
 
         [HttpGet]
@@ -42,9 +39,9 @@ namespace StudentApi.Controllers
                 });
             }
         }
-        
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetStudentById(int id)
+
+        [HttpGet("{id:long}")]
+        public async Task<IActionResult> GetStudentById(long id)
         {
             if (id <= 0)
                 return BadRequest(new { message = "ID must be a positive number." });
@@ -71,7 +68,7 @@ namespace StudentApi.Controllers
 
             try
             {
-                var matchedStudents = await _mediator.Send(new SearchStudentsQuery(name));
+                var matchedStudents = await _mediator.Send(new SearchStudentsQuery(name.Trim()));
                 return Ok(matchedStudents);
             }
             catch (Exception ex)
@@ -79,7 +76,6 @@ namespace StudentApi.Controllers
                 return StatusCode(500, new { message = "An error occurred.", error = ex.Message });
             }
         }
-
 
         [HttpPost("update")]
         public async Task<IActionResult> UpdateStudent([FromBody] UpdateStudentDto updatedStudent)
@@ -94,6 +90,14 @@ namespace StudentApi.Controllers
 
             try
             {
+                // optional trim
+                updatedStudent = new UpdateStudentDto
+                {
+                    Id = updatedStudent.Id,
+                    Name = updatedStudent.Name.Trim(),
+                    Email = updatedStudent.Email.Trim()
+                };
+
                 var student = await _mediator.Send(new UpdateStudentCommand(updatedStudent));
                 if (student == null)
                     return NotFound(new { message = $"Student with ID {updatedStudent.Id} not found." });
@@ -106,9 +110,8 @@ namespace StudentApi.Controllers
             }
         }
 
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteStudent(int id)
+        [HttpDelete("{id:long}")]
+        public async Task<IActionResult> DeleteStudent(long id)
         {
             if (id <= 0)
                 return BadRequest(new { message = "ID must be a positive number." });
@@ -127,8 +130,8 @@ namespace StudentApi.Controllers
             }
         }
 
-
         [HttpPost("upload-image")]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> UploadImage([FromForm] IFormFile imageFile, [FromServices] IWebHostEnvironment env)
         {
             try

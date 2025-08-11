@@ -1,21 +1,27 @@
 using MediatR;
-using StudentApi.Services;
+using Microsoft.EntityFrameworkCore;
+using StudentApi.Data;
 
 namespace StudentApi.Features.Students.Commands
 {
     public class DeleteStudentCommandHandler : IRequestHandler<DeleteStudentCommand, bool>
     {
-        private readonly IStudentService _studentService;
+        private readonly StudentDbContext _db;
 
-        public DeleteStudentCommandHandler(IStudentService studentService)
+        public DeleteStudentCommandHandler(StudentDbContext db)
         {
-            _studentService = studentService;
+            _db = db;
         }
 
-        public Task<bool> Handle(DeleteStudentCommand request, CancellationToken cancellationToken)
+        public async Task<bool> Handle(DeleteStudentCommand request, CancellationToken cancellationToken)
         {
-            var result = _studentService.Delete(request.Id);
-            return Task.FromResult(result);
+            var entity = await _db.Students
+                .FirstOrDefaultAsync(s => s.Id == request.Id, cancellationToken);
+            if (entity is null) return false;
+
+            _db.Students.Remove(entity);
+            await _db.SaveChangesAsync(cancellationToken);
+            return true;
         }
     }
 }

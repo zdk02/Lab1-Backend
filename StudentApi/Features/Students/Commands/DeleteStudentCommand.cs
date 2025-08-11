@@ -4,9 +4,9 @@ namespace StudentApi.Features.Students.Commands
 {
     public class DeleteStudentCommand : IRequest<bool>
     {
-        public int Id { get; }
+        public long Id { get; }
 
-        public DeleteStudentCommand(int id)
+        public DeleteStudentCommand(long id)
         {
             Id = id;
         }

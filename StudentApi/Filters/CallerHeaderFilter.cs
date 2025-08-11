@@ -17,7 +17,7 @@ namespace StudentApi.Filters
                 return;
             }
 
-            if (callerHeader == "Unknow")
+            if (callerHeader == "Unknown")
             {
                 context.Result = new BadRequestObjectResult(new
                 {

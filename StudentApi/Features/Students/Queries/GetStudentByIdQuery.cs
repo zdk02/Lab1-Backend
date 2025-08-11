@@ -5,9 +5,9 @@ namespace StudentApi.Features.Students.Queries
 {
     public class GetStudentByIdQuery : IRequest<Student>
     {
-        public int Id { get; }
+        public long Id { get; }
 
-        public GetStudentByIdQuery(int id)
+        public GetStudentByIdQuery(long id)
         {
             Id = id;
         }

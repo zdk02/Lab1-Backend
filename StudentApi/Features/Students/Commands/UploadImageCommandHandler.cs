@@ -1,10 +1,18 @@
 using MediatR;
+using System;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace StudentApi.Features.Students.Commands
 {
-    public class UploadImageCommandHandler : IRequestHandler<UploadImageCommand, UploadImageResult>
+    public class UploadImageCommandHandler 
+        : IRequestHandler<UploadImageCommand, UploadImageResult>
     {
-        public async Task<UploadImageResult> Handle(UploadImageCommand request, CancellationToken cancellationToken)
+        public async Task<UploadImageResult> Handle(
+            UploadImageCommand request,
+            CancellationToken cancellationToken)
         {
             var imageFile = request.ImageFile;
             var env = request.Env;
@@ -16,7 +24,9 @@ namespace StudentApi.Features.Students.Commands
             var fileExtension = Path.GetExtension(imageFile.FileName).ToLowerInvariant();
 
             if (!allowedExtensions.Contains(fileExtension))
-                throw new ArgumentException($"Invalid file type. Allowed types are: {string.Join(", ", allowedExtensions)}");
+                throw new ArgumentException(
+                    $"Invalid file type. Allowed types are: {string.Join(", ", allowedExtensions)}"
+                );
 
             var uploadsFolder = Path.Combine(
                 env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"),
